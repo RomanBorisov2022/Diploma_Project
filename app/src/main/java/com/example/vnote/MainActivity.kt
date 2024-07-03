@@ -16,45 +16,47 @@ class MainActivity : AppCompatActivity() {
     private val GALLERY_REQUEST_CODE = 123
     private lateinit var galleryPhotoManager: GalleryPhotoManager
     private lateinit var notesFileManager: NotesFileManager
-    private lateinit var photoImageView: ImageView
-    private lateinit var uploadPhotoButton: Button
-    private lateinit var vehicleInfoEditText: EditText
-    private lateinit var editInfoButton: Button
-    private lateinit var createNoteButton: Button
-    private lateinit var notesContainer: LinearLayout
-    private lateinit var saveFileButton: Button
+    private lateinit var image: ImageView
+    private lateinit var firstTextView: TextView
+    private lateinit var secondTextView: TextView
+    private lateinit var buttonInfoEdit: Button
+    private lateinit var noteEditText: EditText
+    private lateinit var saveNoteButton: Button
+    private lateinit var notesContainer: LinearLayout //Инициализация notesContainer
+    private lateinit var notesButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Подготовка элементов разметки
-        photoImageView = findViewById(R.id.photoImageView)
-        uploadPhotoButton = findViewById(R.id.uploadPhotoButton)
-        vehicleInfoEditText = findViewById(R.id.vehicleInfoEditText)
-        editInfoButton = findViewById(R.id.editInfoButton)
-        createNoteButton = findViewById(R.id.createNoteButton)
-        notesContainer = findViewById(R.id.notesContainer)
-        saveFileButton = findViewById(R.id.saveFileButton)
+        // Инициализация представлений из XML-разметки
+        image = findViewById(R.id.image)
+        firstTextView = findViewById(R.id.firstTextView)
+        secondTextView = findViewById(R.id.secondTextView)
+        buttonInfoEdit = findViewById(R.id.button_info_edit)
+        noteEditText = findViewById(R.id.note_edit_text)
+        saveNoteButton = findViewById(R.id.save_note_button)
+        //notesContainer = findViewById(R.id.notesContainer) // Инициализация notesContainer
+        notesButton = findViewById(R.id.notes_button)
 
         galleryPhotoManager = GalleryPhotoManager(this, GALLERY_REQUEST_CODE)
         notesFileManager = NotesFileManager(this)
 
         // Обработка нажатия кнопки "Загрузить фото"
-        uploadPhotoButton.setOnClickListener {
+        image.setOnClickListener {
             galleryPhotoManager.choosePhotoFromGallery()
         }
 
-        // Обработка нажатия кнопки "Создать заметку"
-        createNoteButton.setOnClickListener {
-            val noteText = "Новая заметка" // Ваш текст заметки
+        // Обработка нажатия кнопки "Сохранить заметку"
+        saveNoteButton.setOnClickListener {
+            val noteText = noteEditText.text.toString() // Получение текста из EditText
             val noteTextView = TextView(this)
             noteTextView.text = noteText
-            notesContainer.addView(noteTextView)
             notesFileManager.saveNotesToFile(listOf(noteText), "notes.txt")
         }
 
-        // Другие обработчики нажатий здесь...
+        notesButton.setOnClickListener{
+        }
     }
 
     // Метод для обработки выбора фотографии из галереи
@@ -62,7 +64,7 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == GALLERY_REQUEST_CODE && resultCode == RESULT_OK) {
             val selectedImage = data?.data
-            photoImageView.setImageURI(selectedImage) // установка выбранной фотографии в ImageView
+            image.setImageURI(selectedImage) // установка выбранной фотографии в ImageView
         }
     }
 
@@ -107,6 +109,4 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
         }
     }
-
-
 }

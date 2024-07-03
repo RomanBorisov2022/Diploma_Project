@@ -10,7 +10,7 @@ class NotesFileManager(private val context: Context) {
 
         FileWriter(file).use { writer ->
             for (note in notes) {
-                writer.appendln(note)
+                writer.appendLine(note)
             }
         }
     }
