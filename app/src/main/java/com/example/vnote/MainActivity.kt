@@ -1,112 +1,114 @@
 package com.example.vnote
 
 import android.content.Context
-import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
-import android.widget.*
-import android.content.Intent
+import android.content.SharedPreferences
+import android.graphics.BitmapFactory
 import android.net.Uri
-import java.io.BufferedReader
-import java.io.File
-import java.io.FileInputStream
-import java.io.InputStreamReader
+import android.os.Bundle
+import android.util.Log
+import android.widget.EditText
+import android.widget.ImageView
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import android.widget.TextView
+import com.squareup.picasso.Picasso
+import java.io.FileNotFoundException
+
 
 class MainActivity : AppCompatActivity() {
-
-    private val GALLERY_REQUEST_CODE = 123
-    private lateinit var galleryPhotoManager: GalleryPhotoManager
-    private lateinit var notesFileManager: NotesFileManager
-    private lateinit var image: ImageView
-    private lateinit var firstTextView: TextView
+    private lateinit var imageView: ImageView
     private lateinit var secondTextView: TextView
-    private lateinit var buttonInfoEdit: Button
-    private lateinit var noteEditText: EditText
-    private lateinit var saveNoteButton: Button
-    private lateinit var notesContainer: LinearLayout //Инициализация notesContainer
-    private lateinit var notesButton: Button
+    private lateinit var sharedPreferences: SharedPreferences
+    private lateinit var userDescription: String
+    private var imageUri: String? = null
+
+    private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            imageUri = uri.toString()
+            loadImageFromUri(uri)
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("imageUri", imageUri)
+        outState.putString("userDescription", userDescription)
+        outState.putString("textFromSecondTextView", secondTextView.text.toString())
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Инициализация представлений из XML-разметки
-        image = findViewById(R.id.image)
-        firstTextView = findViewById(R.id.firstTextView)
-        secondTextView = findViewById(R.id.secondTextView)
-        buttonInfoEdit = findViewById(R.id.button_info_edit)
-        noteEditText = findViewById(R.id.note_edit_text)
-        saveNoteButton = findViewById(R.id.save_note_button)
-        //notesContainer = findViewById(R.id.notesContainer) // Инициализация notesContainer
-        notesButton = findViewById(R.id.notes_button)
+        imageView = findViewById(R.id.image)
+        secondTextView = findViewById<TextView>(R.id.secondTextView)
+        sharedPreferences = getSharedPreferences("MySharedPreferences", Context.MODE_PRIVATE)
 
-        galleryPhotoManager = GalleryPhotoManager(this, GALLERY_REQUEST_CODE)
-        notesFileManager = NotesFileManager(this)
 
-        // Обработка нажатия кнопки "Загрузить фото"
-        image.setOnClickListener {
-            galleryPhotoManager.choosePhotoFromGallery()
+        imageView.setOnClickListener {
+            getContent.launch("image/*")
         }
 
-        // Обработка нажатия кнопки "Сохранить заметку"
-        saveNoteButton.setOnClickListener {
-            val noteText = noteEditText.text.toString() // Получение текста из EditText
-            val noteTextView = TextView(this)
-            noteTextView.text = noteText
-            notesFileManager.saveNotesToFile(listOf(noteText), "notes.txt")
+        secondTextView.setOnClickListener {
+            showDescriptionDialog()
         }
 
-        notesButton.setOnClickListener{
+        userDescription = savedInstanceState?.getString("userDescription") ?: ""
+
+        userDescription = sharedPreferences.getString("userDescription", "") ?: ""
+
+        imageUri = savedInstanceState?.getString("imageUri")
+        if (imageUri != null) {
+            loadImageFromUri(Uri.parse(imageUri))
+        }
+
+        secondTextView.text = savedInstanceState?.getString("textFromSecondTextView", "")
+
+        secondTextView.text = userDescription
+
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Сохранение информации в SharedPreferences
+        val userDescription = secondTextView.text.toString()
+        with(sharedPreferences.edit()) {
+            putString("userDescription", userDescription)
+            putString("imageUri", imageUri)
+            apply()
         }
     }
 
-    // Метод для обработки выбора фотографии из галереи
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == GALLERY_REQUEST_CODE && resultCode == RESULT_OK) {
-            val selectedImage = data?.data
-            image.setImageURI(selectedImage) // установка выбранной фотографии в ImageView
-        }
-    }
-
-    // Сохранение фотографии на устройстве
-    private fun savePhotoToStorage(selectedImage: Uri?) {
-        // Получение пути к выбранной фотографии
-        val path = selectedImage?.path
-
-        // Здесь добавьте логику сохранения пути к фотографии в файловой системе устройства или в базе данных
-    }
-
-    // Сохранение заметки в файле
-    private fun saveNoteToFile(noteText: String, fileName: String) {
+    private fun loadImageFromUri(uri: Uri) {
         try {
-            val fileOutputStream = openFileOutput(fileName, Context.MODE_APPEND)
-            fileOutputStream.write(noteText.toByteArray())
-            fileOutputStream.close()
-        } catch (e: Exception) {
+            val inputStream = contentResolver.openInputStream(uri)
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+            imageView.setImageBitmap(bitmap)
+            imageUri = uri.toString()
+        } catch (e: FileNotFoundException) {
             e.printStackTrace()
         }
     }
 
-    // Загрузка всех заметок из файла
-    private fun loadNotesFromFile(fileName: String) {
-        val file = File(filesDir, fileName)
-        try {
-            val fileInputStream = FileInputStream(file)
-            val inputStreamReader = InputStreamReader(fileInputStream)
-            val bufferedReader = BufferedReader(inputStreamReader)
+    private fun showDescriptionDialog() {
+        val dialogBuilder = AlertDialog.Builder(this)
+        val editText = EditText(this)
+        dialogBuilder.setTitle("Enter description")
+        dialogBuilder.setView(editText)
 
-            var line: String?
-            while (bufferedReader.readLine().also { line = it } != null) {
-                val noteTextView = TextView(this)
-                noteTextView.text = line
-                noteTextView.setOnClickListener {
-                    // Обработка нажатия на заметку
-                    Toast.makeText(this, "Нажата заметка: $line", Toast.LENGTH_SHORT).show()
-                }
-                notesContainer.addView(noteTextView)
+        dialogBuilder.setPositiveButton("Save") { dialog, whichButton ->
+            val userDescription = editText.text.toString()
+            secondTextView.text = userDescription  // Обновляем текст в соответствующем TextView
+            with(sharedPreferences.edit()) {
+                putString("userDescription", userDescription)
+                apply()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
+
+        dialogBuilder.setNegativeButton("Cancel") { dialog, whichButton -> }
+
+        val dialog = dialogBuilder.create()
+        dialog.show()
     }
 }

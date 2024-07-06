@@ -68,6 +68,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("androidx.constraintlayout:constraintlayout:2.1.0")
+    implementation ("com.squareup.picasso:picasso:2.71828")
+
 
 
 }
