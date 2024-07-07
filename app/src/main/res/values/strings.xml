@@ -1,7 +1,9 @@
 <resources>
     <string name="app_name">VNote</string>
-    <string name="save_note">Сохранить заметку</string>
-    <string name="edit_text">Редактировать</string>
-    <string name="note_edit_text">Введите заметку</string>
-    <string name="note_text">Заметки</string>
+    <string name="note_edit_text">Введите запись</string>
+    <string name="note_text">Все записи</string>
+    <string name="enter_note">Введите запись</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="all_notes">Все записи</string>
 </resources>

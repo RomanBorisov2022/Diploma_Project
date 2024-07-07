@@ -1,114 +1,103 @@
 package com.example.vnote
 
-import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
+import android.provider.MediaStore
 import android.widget.EditText
-import android.widget.ImageView
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import android.widget.TextView
-import com.squareup.picasso.Picasso
-import java.io.FileNotFoundException
-
+import com.bumptech.glide.Glide
+import com.example.vnote.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var imageView: ImageView
-    private lateinit var secondTextView: TextView
+
+    private val PICK_IMAGE = 1
     private lateinit var sharedPreferences: SharedPreferences
-    private lateinit var userDescription: String
-    private var imageUri: String? = null
+    private lateinit var binding: ActivityMainBinding
 
-    private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            imageUri = uri.toString()
-            loadImageFromUri(uri)
-        }
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putString("imageUri", imageUri)
-        outState.putString("userDescription", userDescription)
-        outState.putString("textFromSecondTextView", secondTextView.text.toString())
+    companion object {
+        const val SHARED_PREFS = "sharedPrefs"
+        private const val TEXT_KEY = "text"
+        private const val IMAGE_URI_KEY = "imageUri"
+        const val NOTES_KEY = "notes"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        imageView = findViewById(R.id.image)
-        secondTextView = findViewById<TextView>(R.id.secondTextView)
-        sharedPreferences = getSharedPreferences("MySharedPreferences", Context.MODE_PRIVATE)
+        sharedPreferences = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE)
 
+        binding.image.setOnClickListener { openGallery() }
 
-        imageView.setOnClickListener {
-            getContent.launch("image/*")
-        }
+        binding.addNoteButton.setOnClickListener { showAddNoteDialog() }
+        binding.showNotesButton.setOnClickListener { showAllNotes() }
 
-        secondTextView.setOnClickListener {
-            showDescriptionDialog()
-        }
-
-        userDescription = savedInstanceState?.getString("userDescription") ?: ""
-
-        userDescription = sharedPreferences.getString("userDescription", "") ?: ""
-
-        imageUri = savedInstanceState?.getString("imageUri")
-        if (imageUri != null) {
-            loadImageFromUri(Uri.parse(imageUri))
-        }
-
-        secondTextView.text = savedInstanceState?.getString("textFromSecondTextView", "")
-
-        secondTextView.text = userDescription
-
+        loadImage()
     }
 
-    override fun onStop() {
-        super.onStop()
-        // Сохранение информации в SharedPreferences
-        val userDescription = secondTextView.text.toString()
-        with(sharedPreferences.edit()) {
-            putString("userDescription", userDescription)
-            putString("imageUri", imageUri)
-            apply()
-        }
+    private fun openGallery() {
+        val gallery = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
+        startActivityForResult(gallery, PICK_IMAGE)
     }
 
-    private fun loadImageFromUri(uri: Uri) {
-        try {
-            val inputStream = contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            imageView.setImageBitmap(bitmap)
-            imageUri = uri.toString()
-        } catch (e: FileNotFoundException) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun showDescriptionDialog() {
-        val dialogBuilder = AlertDialog.Builder(this)
-        val editText = EditText(this)
-        dialogBuilder.setTitle("Enter description")
-        dialogBuilder.setView(editText)
-
-        dialogBuilder.setPositiveButton("Save") { dialog, whichButton ->
-            val userDescription = editText.text.toString()
-            secondTextView.text = userDescription  // Обновляем текст в соответствующем TextView
-            with(sharedPreferences.edit()) {
-                putString("userDescription", userDescription)
-                apply()
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode == RESULT_OK && requestCode == PICK_IMAGE) {
+            val imageUri: Uri? = data?.data
+            if (imageUri != null) {
+                saveImageUri(imageUri)
+                loadImage()
             }
         }
+    }
 
-        dialogBuilder.setNegativeButton("Cancel") { dialog, whichButton -> }
+    private fun saveImageUri(imageUri: Uri) {
+        sharedPreferences.edit().putString(IMAGE_URI_KEY, imageUri.toString()).apply()
+    }
 
-        val dialog = dialogBuilder.create()
-        dialog.show()
+    private fun loadImage() {
+        val imageUriString = sharedPreferences.getString(IMAGE_URI_KEY, null)
+        if (imageUriString != null) {
+            val imageUri = Uri.parse(imageUriString)
+            Glide.with(this).load(imageUri).into(binding.image)
+        }
+    }
+
+    private fun showAddNoteDialog() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle(getString(R.string.enter_note))
+
+        val input = EditText(this)
+        builder.setView(input)
+
+        builder.setPositiveButton(getString(R.string.save)) { _, _ ->
+            val text = input.text.toString()
+            saveText(text)
+        }
+
+        builder.setNegativeButton(getString(R.string.cancel)) { dialog, _ ->
+            dialog.cancel()
+        }
+
+        builder.show()
+    }
+
+    private fun saveText(text: String) {
+        val savedNotes = sharedPreferences.getString(NOTES_KEY, "")
+        val updatedNotes = if (savedNotes.isNullOrEmpty()) {
+            text
+        } else {
+            "$savedNotes\n$text"
+        }
+        sharedPreferences.edit().putString(NOTES_KEY, updatedNotes).apply()
+    }
+
+    private fun showAllNotes() {
+        val intent = Intent(this, NotesActivity::class.java)
+        startActivity(intent)
     }
 }
