@@ -22,6 +22,7 @@ class MainActivity : AppCompatActivity() {
         private const val TEXT_KEY = "text"
         private const val IMAGE_URI_KEY = "imageUri"
         const val NOTES_KEY = "notes"
+        const val IMAGE_NOTE_KEY = "imageNote"  // New key for image note
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,8 +36,10 @@ class MainActivity : AppCompatActivity() {
 
         binding.addNoteButton.setOnClickListener { showAddNoteDialog() }
         binding.showNotesButton.setOnClickListener { showAllNotes() }
+        binding.secondTextView.setOnClickListener { showEditImageNoteDialog() } // Set click listener for text view
 
         loadImage()
+        loadImageNote()
     }
 
     private fun openGallery() {
@@ -65,6 +68,36 @@ class MainActivity : AppCompatActivity() {
             val imageUri = Uri.parse(imageUriString)
             Glide.with(this).load(imageUri).into(binding.image)
         }
+    }
+
+    private fun loadImageNote() {
+        val imageNote = sharedPreferences.getString(IMAGE_NOTE_KEY, "")
+        binding.secondTextView.text = imageNote
+    }
+
+    private fun showEditImageNoteDialog() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle(getString(R.string.enter_note))
+
+        val input = EditText(this)
+        input.setText(sharedPreferences.getString(IMAGE_NOTE_KEY, ""))  // Load current text
+        builder.setView(input)
+
+        builder.setPositiveButton(getString(R.string.save)) { _, _ ->
+            val text = input.text.toString()
+            saveImageNoteText(text)
+        }
+
+        builder.setNegativeButton(getString(R.string.cancel)) { dialog, _ ->
+            dialog.cancel()
+        }
+
+        builder.show()
+    }
+
+    private fun saveImageNoteText(text: String) {
+        sharedPreferences.edit().putString(IMAGE_NOTE_KEY, text).apply()
+        binding.secondTextView.text = text // Update the TextView with new text
     }
 
     private fun showAddNoteDialog() {
