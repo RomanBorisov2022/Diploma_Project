@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">VNote - Записная Книжка ТС</string>
+    <string name="app_name">Записная Книжка ТС</string>
     <string name="note_edit_text">Введите запись</string>
     <string name="note_text">Все записи</string>
     <string name="enter_note">Введите запись</string>
