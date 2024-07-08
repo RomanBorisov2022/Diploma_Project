@@ -1,7 +1,6 @@
-package com.example.vnote
+package com.example.vnote.ui
 
 import android.content.Intent
-import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -9,20 +8,21 @@ import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
+import com.example.vnote.R
 import com.example.vnote.databinding.ActivityMainBinding
+import com.example.vnote.utils.PreferenceManager
 
 class MainActivity : AppCompatActivity() {
 
     private val PICK_IMAGE = 1
-    private lateinit var sharedPreferences: SharedPreferences
     private lateinit var binding: ActivityMainBinding
+    private lateinit var preferenceManager: PreferenceManager
 
     companion object {
         const val SHARED_PREFS = "sharedPrefs"
-        private const val TEXT_KEY = "text"
-        private const val IMAGE_URI_KEY = "imageUri"
+        const val TEXT_KEY = "text"
+        const val IMAGE_URI_KEY = "imageUri"
         const val NOTES_KEY = "notes"
-        const val IMAGE_NOTE_KEY = "imageNote"  // New key for image note
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,16 +30,15 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        sharedPreferences = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE)
+        preferenceManager = PreferenceManager.getInstance(this)
 
         binding.image.setOnClickListener { openGallery() }
-
         binding.addNoteButton.setOnClickListener { showAddNoteDialog() }
         binding.showNotesButton.setOnClickListener { showAllNotes() }
-        binding.secondTextView.setOnClickListener { showEditImageNoteDialog() } // Set click listener for text view
+        binding.secondTextView.setOnClickListener { showEditDescriptionDialog() } // New line for editing description
 
         loadImage()
-        loadImageNote()
+        loadText()
     }
 
     private fun openGallery() {
@@ -52,52 +51,18 @@ class MainActivity : AppCompatActivity() {
         if (resultCode == RESULT_OK && requestCode == PICK_IMAGE) {
             val imageUri: Uri? = data?.data
             if (imageUri != null) {
-                saveImageUri(imageUri)
+                preferenceManager.saveImageUri(imageUri.toString())
                 loadImage()
             }
         }
     }
 
-    private fun saveImageUri(imageUri: Uri) {
-        sharedPreferences.edit().putString(IMAGE_URI_KEY, imageUri.toString()).apply()
-    }
-
     private fun loadImage() {
-        val imageUriString = sharedPreferences.getString(IMAGE_URI_KEY, null)
+        val imageUriString = preferenceManager.getImageUri()
         if (imageUriString != null) {
             val imageUri = Uri.parse(imageUriString)
             Glide.with(this).load(imageUri).into(binding.image)
         }
-    }
-
-    private fun loadImageNote() {
-        val imageNote = sharedPreferences.getString(IMAGE_NOTE_KEY, "")
-        binding.secondTextView.text = imageNote
-    }
-
-    private fun showEditImageNoteDialog() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle(getString(R.string.enter_note))
-
-        val input = EditText(this)
-        input.setText(sharedPreferences.getString(IMAGE_NOTE_KEY, ""))  // Load current text
-        builder.setView(input)
-
-        builder.setPositiveButton(getString(R.string.save)) { _, _ ->
-            val text = input.text.toString()
-            saveImageNoteText(text)
-        }
-
-        builder.setNegativeButton(getString(R.string.cancel)) { dialog, _ ->
-            dialog.cancel()
-        }
-
-        builder.show()
-    }
-
-    private fun saveImageNoteText(text: String) {
-        sharedPreferences.edit().putString(IMAGE_NOTE_KEY, text).apply()
-        binding.secondTextView.text = text // Update the TextView with new text
     }
 
     private fun showAddNoteDialog() {
@@ -119,14 +84,40 @@ class MainActivity : AppCompatActivity() {
         builder.show()
     }
 
+    private fun showEditDescriptionDialog() { // New method for editing description
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle(getString(R.string.enter_description))
+
+        val input = EditText(this)
+        input.setText(preferenceManager.getText()) // Load current description
+        builder.setView(input)
+
+        builder.setPositiveButton(getString(R.string.save)) { _, _ ->
+            val text = input.text.toString()
+            preferenceManager.saveText(text)
+            binding.secondTextView.text = text // Update the description view
+        }
+
+        builder.setNegativeButton(getString(R.string.cancel)) { dialog, _ ->
+            dialog.cancel()
+        }
+
+        builder.show()
+    }
+
+    private fun loadText() {
+        val savedText = preferenceManager.getText()
+        binding.secondTextView.text = savedText
+    }
+
     private fun saveText(text: String) {
-        val savedNotes = sharedPreferences.getString(NOTES_KEY, "")
+        val savedNotes = preferenceManager.getNotes()
         val updatedNotes = if (savedNotes.isNullOrEmpty()) {
             text
         } else {
             "$savedNotes\n$text"
         }
-        sharedPreferences.edit().putString(NOTES_KEY, updatedNotes).apply()
+        preferenceManager.saveNotes(updatedNotes)
     }
 
     private fun showAllNotes() {
